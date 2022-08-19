@@ -85,8 +85,9 @@ class S3DISDataset(PointCloudDataset):
                                3: 'nonground',
                                4: 'poles',
                                5: 'powerline',
-                               6: 'tempobj',
-                               7: 'error'}
+                               6: 'tempobj'}
+        #                       6: 'tempobj',
+        #                       7: 'error'}
 
         # Initialize a bunch of variables concerning class labels
         self.init_labels()
@@ -121,9 +122,9 @@ class S3DISDataset(PointCloudDataset):
         ply_path = self.path
         
         # Proportion of validation scenes
-        self.cloud_names = ['Area_1', 'Area_2', 'Area_3', 'Area_4', 'Area_5', 'Area_6']
-        self.all_splits = [0, 1, 2, 3, 4, 5]
-        self.validation_split = 4
+        self.cloud_names = ['train_auto', 'val_auto']
+        self.all_splits = [0, 1]
+        self.validation_split = 1
 
         # Number of models used per epoch
         if self.set == 'training':
@@ -312,12 +313,22 @@ class S3DISDataset(PointCloudDataset):
                 # Get potential points from tree structure
                 pot_points = np.array(self.pot_trees[cloud_ind].data, copy=False)
 
+                #print("point_ind", point_ind)
                 # Center point of input region
                 center_point = pot_points[point_ind, :].reshape(1, -1)
 
                 # Add a small noise to center point
-                if self.set != 'ERF':
-                    center_point += np.random.normal(scale=self.config.in_radius / 10, size=center_point.shape)
+                # if self.set != 'ERF':
+                #     center_point += np.random.normal(scale=self.config.in_radius / 10, size=center_point.shape)
+
+                if center_point[0][0] < -15 or center_point[0][0] > 2015 or center_point[0][1] < -15 or center_point[0][1] > 1015 or center_point[0][2] < 0 or center_point[0][2] > 215:
+                    print('pot_points[point_ind, :].reshape(1, -1)', pot_points[point_ind, :].reshape(1, -1))
+                    print("center_point1.shape", center_point[0].shape, "self.config.in_radius", self.config.in_radius)
+                    print("coors1", center_point)
+                    write_ply('/media/bsf/Elements/input_trees/pot_cloud_' + str(center_point[0][0]) + '_' + str(center_point[0][1]) + '_' + str(center_point[0][2]) + '_' + str(time.time()) + '_' + str(failed_attempts),
+                              [pot_points],
+                              ['x', 'y', 'z'])
+                    time.sleep(180)
 
                 # Indices of points in input region
                 pot_inds, dists = self.pot_trees[cloud_ind].query_radius(center_point,
@@ -341,7 +352,6 @@ class S3DISDataset(PointCloudDataset):
             # Get points from tree structure
             points = np.array(self.input_trees[cloud_ind].data, copy=False)
 
-
             # Indices of points in input region
             input_inds = self.input_trees[cloud_ind].query_radius(center_point,
                                                                   r=self.config.in_radius)[0]
@@ -350,11 +360,22 @@ class S3DISDataset(PointCloudDataset):
 
             # Number collected
             n = input_inds.shape[0]
+            print("cur batch is", batch_n, "n is", n)
 
             # Safe check for empty spheres
             if n < 2:
                 failed_attempts += 1
-                if failed_attempts > 100 * self.config.batch_num:
+                if failed_attempts > 1000 * self.config.batch_num and failed_attempts % 1000 * self.config.batch_num == 0:
+                    print("failed attempts is", failed_attempts, "Point having no 1 000 x self.config.batch_num neighs is", center_point[0], "self.config.batch_num is", self.config.batch_num)
+                    print('Lets save input tree')
+                    inp_saved = '/media/bsf/Elements/input_trees/sparse_cloud_' + str(center_point[0][0]) + '_' + str(center_point[0][1]) + '_' + str(center_point[0][2]) + '_' + str(time.time()) + '_' + str(failed_attempts)
+                    write_ply(inp_saved,
+                              [np.array(self.input_trees[cloud_ind].data)],
+                              ['x', 'y', 'z'])
+                else:
+                    print("failed attempts is", failed_attempts, 'center_point[0]', center_point[0])
+                if failed_attempts > 1000000 * self.config.batch_num:
+                    print("Point having no 1 000 000 neighbors is", center_point[0])
                     raise ValueError('It seems this dataset only containes empty input spheres')
                 t += [time.time()]
                 t += [time.time()]
@@ -515,141 +536,141 @@ class S3DISDataset(PointCloudDataset):
             print('\n************************\n')
         return input_list
 
-    def random_item(self, batch_i):
-
-        # Initiate concatanation lists
-        p_list = []
-        f_list = []
-        l_list = []
-        i_list = []
-        pi_list = []
-        ci_list = []
-        s_list = []
-        R_list = []
-        batch_n = 0
-        failed_attempts = 0
-
-        while True:
-
-            with self.worker_lock:
-
-                # Get potential minimum
-                cloud_ind = int(self.epoch_inds[0, self.epoch_i])
-                point_ind = int(self.epoch_inds[1, self.epoch_i])
-
-                # Update epoch indice
-                self.epoch_i += 1
-                if self.epoch_i >= int(self.epoch_inds.shape[1]):
-                    self.epoch_i -= int(self.epoch_inds.shape[1])
-                
-
-            # Get points from tree structure
-            points = np.array(self.input_trees[cloud_ind].data, copy=False)
-
-            # Center point of input region
-            center_point = points[point_ind, :].reshape(1, -1)
-
-            # Add a small noise to center point
-            if self.set != 'ERF':
-                center_point += np.random.normal(scale=self.config.in_radius / 10, size=center_point.shape)
-
-            # Indices of points in input region
-            input_inds = self.input_trees[cloud_ind].query_radius(center_point,
-                                                                  r=self.config.in_radius)[0]
-
-            # Number collected
-            n = input_inds.shape[0]
-            
-            # Safe check for empty spheres
-            if n < 2:
-                failed_attempts += 1
-                if failed_attempts > 100 * self.config.batch_num:
-                    raise ValueError('It seems this dataset only containes empty input spheres')
-                continue
-
-            # Collect labels and colors
-            input_points = (points[input_inds] - center_point).astype(np.float32)
-            input_colors = self.input_colors[cloud_ind][input_inds]
-            if self.set in ['test', 'ERF']:
-                input_labels = np.zeros(input_points.shape[0])
-            else:
-                input_labels = self.input_labels[cloud_ind][input_inds]
-                input_labels = np.array([self.label_to_idx[l] for l in input_labels])
-
-            # Data augmentation
-            input_points, scale, R = self.augmentation_transform(input_points)
-
-            # Color augmentation
-            if np.random.rand() > self.config.augment_color:
-                input_colors *= 0
-
-            # Get original height as additional feature
-            input_features = np.hstack((input_colors, input_points[:, 2:] + center_point[:, 2:])).astype(np.float32)
-
-            # Stack batch
-            p_list += [input_points]
-            f_list += [input_features]
-            l_list += [input_labels]
-            pi_list += [input_inds]
-            i_list += [point_ind]
-            ci_list += [cloud_ind]
-            s_list += [scale]
-            R_list += [R]
-
-            # Update batch size
-            batch_n += n
-
-            # In case batch is full, stop
-            if batch_n > int(self.batch_limit):
-                break
-
-            # Randomly drop some points (act as an augmentation process and a safety for GPU memory consumption)
-            # if n > int(self.batch_limit):
-            #    input_inds = np.random.choice(input_inds, size=int(self.batch_limit) - 1, replace=False)
-            #    n = input_inds.shape[0]
-
-        ###################
-        # Concatenate batch
-        ###################
-
-        stacked_points = np.concatenate(p_list, axis=0)
-        features = np.concatenate(f_list, axis=0)
-        labels = np.concatenate(l_list, axis=0)
-        point_inds = np.array(i_list, dtype=np.int32)
-        cloud_inds = np.array(ci_list, dtype=np.int32)
-        input_inds = np.concatenate(pi_list, axis=0)
-        stack_lengths = np.array([pp.shape[0] for pp in p_list], dtype=np.int32)
-        scales = np.array(s_list, dtype=np.float32)
-        rots = np.stack(R_list, axis=0)
-
-        # Input features
-        stacked_features = np.ones_like(stacked_points[:, :1], dtype=np.float32)
-        if self.config.in_features_dim == 1:
-            pass
-        elif self.config.in_features_dim == 4:
-            stacked_features = np.hstack((stacked_features, features[:, :3]))
-        elif self.config.in_features_dim == 5:
-            stacked_features = np.hstack((stacked_features, features))
-        else:
-            raise ValueError('Only accepted input dimensions are 1, 4 and 7 (without and with XYZ)')
-
-        #######################
-        # Create network inputs
-        #######################
-        #
-        #   Points, neighbors, pooling indices for each layers
-        #
-
-        # Get the whole input list
-        input_list = self.segmentation_inputs(stacked_points,
-                                              stacked_features,
-                                              labels,
-                                              stack_lengths)
-
-        # Add scale and rotation for testing
-        input_list += [scales, rots, cloud_inds, point_inds, input_inds]
-
-        return input_list
+    # def random_item(self, batch_i):
+    #
+    #     # Initiate concatanation lists
+    #     p_list = []
+    #     f_list = []
+    #     l_list = []
+    #     i_list = []
+    #     pi_list = []
+    #     ci_list = []
+    #     s_list = []
+    #     R_list = []
+    #     batch_n = 0
+    #     failed_attempts = 0
+    #
+    #     while True:
+    #
+    #         with self.worker_lock:
+    #
+    #             # Get potential minimum
+    #             cloud_ind = int(self.epoch_inds[0, self.epoch_i])
+    #             point_ind = int(self.epoch_inds[1, self.epoch_i])
+    #
+    #             # Update epoch indice
+    #             self.epoch_i += 1
+    #             if self.epoch_i >= int(self.epoch_inds.shape[1]):
+    #                 self.epoch_i -= int(self.epoch_inds.shape[1])
+    #
+    #
+    #         # Get points from tree structure
+    #         points = np.array(self.input_trees[cloud_ind].data, copy=False)
+    #
+    #         # Center point of input region
+    #         center_point = points[point_ind, :].reshape(1, -1)
+    #
+    #         # Add a small noise to center point
+    #         if self.set != 'ERF':
+    #             center_point += np.random.normal(scale=self.config.in_radius / 10, size=center_point.shape)
+    #
+    #         # Indices of points in input region
+    #         input_inds = self.input_trees[cloud_ind].query_radius(center_point,
+    #                                                               r=self.config.in_radius)[0]
+    #
+    #         # Number collected
+    #         n = input_inds.shape[0]
+    #
+    #         # Safe check for empty spheres
+    #         if n < 2:
+    #             failed_attempts += 1
+    #             if failed_attempts > 100 * self.config.batch_num:
+    #                 raise ValueError('It seems this dataset only containes empty input spheres')
+    #             continue
+    #
+    #         # Collect labels and colors
+    #         input_points = (points[input_inds] - center_point).astype(np.float32)
+    #         input_colors = self.input_colors[cloud_ind][input_inds]
+    #         if self.set in ['test', 'ERF']:
+    #             input_labels = np.zeros(input_points.shape[0])
+    #         else:
+    #             input_labels = self.input_labels[cloud_ind][input_inds]
+    #             input_labels = np.array([self.label_to_idx[l] for l in input_labels])
+    #
+    #         # Data augmentation
+    #         input_points, scale, R = self.augmentation_transform(input_points)
+    #
+    #         # Color augmentation
+    #         if np.random.rand() > self.config.augment_color:
+    #             input_colors *= 0
+    #
+    #         # Get original height as additional feature
+    #         input_features = np.hstack((input_colors, input_points[:, 2:] + center_point[:, 2:])).astype(np.float32)
+    #
+    #         # Stack batch
+    #         p_list += [input_points]
+    #         f_list += [input_features]
+    #         l_list += [input_labels]
+    #         pi_list += [input_inds]
+    #         i_list += [point_ind]
+    #         ci_list += [cloud_ind]
+    #         s_list += [scale]
+    #         R_list += [R]
+    #
+    #         # Update batch size
+    #         batch_n += n
+    #
+    #         # In case batch is full, stop
+    #         if batch_n > int(self.batch_limit):
+    #             break
+    #
+    #         # Randomly drop some points (act as an augmentation process and a safety for GPU memory consumption)
+    #         # if n > int(self.batch_limit):
+    #         #    input_inds = np.random.choice(input_inds, size=int(self.batch_limit) - 1, replace=False)
+    #         #    n = input_inds.shape[0]
+    #
+    #     ###################
+    #     # Concatenate batch
+    #     ###################
+    #
+    #     stacked_points = np.concatenate(p_list, axis=0)
+    #     features = np.concatenate(f_list, axis=0)
+    #     labels = np.concatenate(l_list, axis=0)
+    #     point_inds = np.array(i_list, dtype=np.int32)
+    #     cloud_inds = np.array(ci_list, dtype=np.int32)
+    #     input_inds = np.concatenate(pi_list, axis=0)
+    #     stack_lengths = np.array([pp.shape[0] for pp in p_list], dtype=np.int32)
+    #     scales = np.array(s_list, dtype=np.float32)
+    #     rots = np.stack(R_list, axis=0)
+    #
+    #     # Input features
+    #     stacked_features = np.ones_like(stacked_points[:, :1], dtype=np.float32)
+    #     if self.config.in_features_dim == 1:
+    #         pass
+    #     elif self.config.in_features_dim == 4:
+    #         stacked_features = np.hstack((stacked_features, features[:, :3]))
+    #     elif self.config.in_features_dim == 5:
+    #         stacked_features = np.hstack((stacked_features, features))
+    #     else:
+    #         raise ValueError('Only accepted input dimensions are 1, 4 and 7 (without and with XYZ)')
+    #
+    #     #######################
+    #     # Create network inputs
+    #     #######################
+    #     #
+    #     #   Points, neighbors, pooling indices for each layers
+    #     #
+    #
+    #     # Get the whole input list
+    #     input_list = self.segmentation_inputs(stacked_points,
+    #                                           stacked_features,
+    #                                           labels,
+    #                                           stack_lengths)
+    #
+    #     # Add scale and rotation for testing
+    #     input_list += [scales, rots, cloud_inds, point_inds, input_inds]
+    #
+    #     return input_list
 
     def prepare_S3DIS_ply(self):
 
@@ -817,8 +838,10 @@ class S3DISDataset(PointCloudDataset):
                            'scalar_Autoclass_3',
                            'scalar_Intensity',
                            'scalar_NumberOfReturns',
-                           'scalar_ReturnNumber'])
+                           'scalar_ReturnNumber',
+                           'scalar_Classification'])
 
+		
             # Fill data containers
             self.input_trees += [search_tree]
             self.input_colors += [sub_colors]
@@ -859,7 +882,9 @@ class S3DISDataset(PointCloudDataset):
                     # Subsample cloud
                     sub_points = np.array(self.input_trees[cloud_ind].data, copy=False)
                     coarse_points = grid_subsampling(sub_points.astype(np.float32), sampleDl=pot_dl)
-
+                    write_ply('/media/bsf/Elements/input_trees/coarse_points_' + str(time.time()),
+                              [coarse_points.astype(np.float32)],
+                              ['x', 'y', 'z'])
                     # Get chosen neighborhoods
                     search_tree = KDTree(coarse_points, leaf_size=10)
 

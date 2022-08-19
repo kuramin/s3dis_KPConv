@@ -53,13 +53,13 @@ class S3DISConfig(Config):
     dataset = 'S3DIS'
 
     # Number of classes in the dataset (This value is overwritten by dataset class when Initializating dataset).
-    num_classes = None
+    num_classes = 7 #None
 
     # Type of task performed on this dataset (also overwritten)
-    dataset_task = ''
+    dataset_task = 'cloud_segmentation' #''
 
     # Number of CPU threads for the input pipeline
-    input_threads = 10
+    input_threads = 0 #10
 
     #########################
     # Architecture definition
@@ -118,20 +118,20 @@ class S3DISConfig(Config):
     ###################
 
     # Number of kernel points
-    num_kernel_points = 15
+    num_kernel_points = 25 #15
 
     # Radius of the input sphere (decrease value to reduce memory cost)
     # in_radius = 15   # kuramin switched from 15 to 10
-    in_radius = 10
+    in_radius = 15 #10
 
     # Size of the first subsampling grid in meter (increase value to reduce memory cost)
-    first_subsampling_dl = 0.2
+    first_subsampling_dl = 0.4 #0.2
 
     # Radius of convolution in "number grid cell". (2.5 is the standard value)
-    conv_radius = 2.5
+    conv_radius = 2.0 #2.5
 
     # Radius of deformable convolution in "number grid cell". Larger so that deformed kernel can spread out
-    deform_radius = 5.0
+    deform_radius = 6.0 #5.0
 
     # Radius of the area of influence of each kernel point in "number grid cell". (1.0 is the standard value)
     KP_extent = 1.2
@@ -144,7 +144,7 @@ class S3DISConfig(Config):
 
     # Choice of input features
     first_features_dim = 128
-    in_features_dim = 9
+    in_features_dim = 9 #10 #9
 
     # Can the network learn modulations
     modulated = False
@@ -173,10 +173,12 @@ class S3DISConfig(Config):
     learning_rate = 1e-2
     momentum = 0.98
 
-    lr_decays = {i: 0.01 ** (1 / 150) for i in range(1, max_epoch)}  # there was just 0.1 here and the degree was 1 / 500
+    #lr_decays = {i: 0.01 ** (1 / 150) for i in range(1, max_epoch)}  # there was just 0.1 here and the degree was 1 / 500
+    lr_decays = {i: 0.01 ** (1 / 500) for i in range(1, max_epoch)}  # there was just 0.1 here and the degree was 1 / 500
     grad_clip_norm = 100.0
     
-    class_w = [0.2, 0.1, 0.1, 0.1, 0.2, 0.1, 0.2, 0.0]
+    class_w = []
+    #class_w = [0.2, 0.1, 0.1, 0.1, 0.2, 0.1, 0.2, 0.0]
 
     # Number of batch (decrease to reduce memory cost, but it should remain > 3 for stability)
     batch_num = 6
@@ -188,7 +190,7 @@ class S3DISConfig(Config):
     validation_size = 50
 
     # Number of epoch between each checkpoint
-    checkpoint_gap = 50
+    checkpoint_gap = 3
 
     # Augmentations
     augment_scale_anisotropic = True

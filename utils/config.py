@@ -47,19 +47,19 @@ class Config:
     dataset_task = ''
 
     # Number of classes in the dataset
-    num_classes = 0
+    num_classes = 7 #0
 
     # Dimension of input points
     in_points_dim = 3
 
     # Dimension of input features
-    in_features_dim = 1
+    in_features_dim = 9 #10  #1
 
     # Radius of the input sphere (ignored for models, only used for point clouds)
-    in_radius = 1.0
+    in_radius = 15.0 #1.0
 
     # Number of CPU threads for the input pipeline
-    input_threads = 8
+    input_threads = 0 #8
 
     ##################
     # Model parameters
@@ -73,11 +73,11 @@ class Config:
     invar_mode = ''
 
     # Dimension of the first feature maps
-    first_features_dim = 64
+    first_features_dim = 128 #64
 
     # Batch normalization parameters
     use_batch_norm = True
-    batch_norm_momentum = 0.99
+    batch_norm_momentum = 0.02 #0.99
 
     # For segmentation models : ratio between the segmented area and the input area
     segmentation_ratio = 1.0
@@ -87,19 +87,19 @@ class Config:
     ###################
 
     # Number of kernel points
-    num_kernel_points = 15
+    num_kernel_points = 25 #15
 
     # Size of the first subsampling grid in meter
-    first_subsampling_dl = 0.02
+    first_subsampling_dl = 0.4 #0.02
 
     # Radius of convolution in "number grid cell". (2.5 is the standard value)
-    conv_radius = 2.5
+    conv_radius = 2.0  #2.5
 
     # Radius of deformable convolution in "number grid cell". Larger so that deformed kernel can spread out
-    deform_radius = 5.0
+    deform_radius = 6.0  #5.0
 
     # Kernel point influence radius
-    KP_extent = 1.0
+    KP_extent = 1.2  #1.0
 
     # Influence function when d < KP_extent. ('constant', 'linear', 'gaussian') When d > KP_extent, always zero
     KP_influence = 'linear'
@@ -128,7 +128,7 @@ class Config:
 
     # Network optimizer parameters (learning rate and momentum)
     learning_rate = 1e-3
-    momentum = 0.9
+    momentum = 0.98
 
     # Learning rate decays. Dictionary of all decay values with their epoch {epoch: decay}.
     lr_decays = {200: 0.2, 300: 0.2}
@@ -138,12 +138,12 @@ class Config:
 
     # Augmentation parameters
     augment_scale_anisotropic = True
-    augment_scale_min = 0.9
-    augment_scale_max = 1.1
-    augment_symmetries = [False, False, False]
+    augment_scale_min = 0.8  #0.9
+    augment_scale_max = 1.2  #1.1
+    augment_symmetries = [True, False, False]  #False
     augment_rotation = 'vertical'
-    augment_noise = 0.005
-    augment_color = 0.7
+    augment_noise = 0.001 #0.005
+    augment_color = 0.8 #0.7
 
     # Augment with occlusions (not implemented yet)
     augment_occlusion = 'none'
@@ -163,9 +163,9 @@ class Config:
     # 'point2point' fitting geometry by penalizing distance from deform point to input points
     # 'point2plane' fitting geometry by penalizing distance from deform point to input point triplet (not implemented)
     deform_fitting_mode = 'point2point'
-    deform_fitting_power = 1.0              # Multiplier for the fitting/repulsive loss
+    deform_fitting_power = 0.1 #1.0              # Multiplier for the fitting/repulsive loss
     deform_lr_factor = 0.1                  # Multiplier for learning rate applied to the deformations
-    repulse_extent = 1.0                    # Distance of repulsion for deformed kernel points
+    repulse_extent = 1.2 #1.0                    # Distance of repulsion for deformed kernel points
 
     # Number of batch
     batch_num = 10
